@@ -33,6 +33,27 @@ try {
     fail(`greenhouse.detect(eu) returned ${JSON.stringify(hitEu)}`);
   }
 
+  // detect() — embed boards carry the token in ?for= (the path is "embed")
+  const hitEmbed = greenhouse.detect({
+    name: 'Stripe',
+    careers_url: 'https://job-boards.greenhouse.io/embed/job_board?for=stripe',
+  });
+  if (hitEmbed && hitEmbed.url === 'https://boards-api.greenhouse.io/v1/boards/stripe/jobs') {
+    pass('greenhouse.detect() reads the slug from ?for= on an embed board URL');
+  } else {
+    fail(`greenhouse.detect(embed) returned ${JSON.stringify(hitEmbed)}`);
+  }
+
+  const hitEmbedFiltered = greenhouse.detect({
+    name: 'Databricks',
+    careers_url: 'https://job-boards.greenhouse.io/embed/job_board?for=databricks&offices%5B%5D=4002841002',
+  });
+  if (hitEmbedFiltered && hitEmbedFiltered.url === 'https://boards-api.greenhouse.io/v1/boards/databricks/jobs') {
+    pass('greenhouse.detect() ignores extra query params on an embed board URL');
+  } else {
+    fail(`greenhouse.detect(embed+filter) returned ${JSON.stringify(hitEmbedFiltered)}`);
+  }
+
   // detect() — api: takes precedence over careers_url and is used verbatim
   // when its host is on the allowlist.
   const hitApi = greenhouse.detect({

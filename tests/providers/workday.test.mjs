@@ -264,6 +264,14 @@ try {
     fail(`workday.detect(no-locale) returned ${JSON.stringify(hitNoLocale)}`);
   }
 
+  // myworkdaysite.com — same product, tenant in the path (/recruiting/{tenant}/{site}).
+  const hitSite = workday.detect({ name: 'Guidewire', careers_url: 'https://wd5.myworkdaysite.com/recruiting/guidewire/external' });
+  if (hitSite && hitSite.url === 'https://wd5.myworkdaysite.com/wday/cxs/guidewire/external/jobs') {
+    pass('workday.detect() resolves a myworkdaysite.com board to its CXS endpoint');
+  } else {
+    fail(`workday.detect(myworkdaysite) returned ${JSON.stringify(hitSite)}`);
+  }
+
   // detect() — null cases
   if (workday.detect({ name: 'X', careers_url: 'https://example.com/careers' }) === null) {
     pass('workday.detect() returns null for non-Workday URL');

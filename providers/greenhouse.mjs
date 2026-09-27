@@ -39,8 +39,19 @@ function resolveApiUrl(entry) {
   }
   const url = entry.careers_url || '';
   const match = url.match(/job-boards(?:\.eu)?\.greenhouse\.io\/([^/?#]+)/);
-  if (match) return `https://boards-api.greenhouse.io/v1/boards/${match[1]}/jobs`;
-  return null;
+  let slug = match ? match[1] : null;
+  // Embed boards carry the token in ?for= (e.g. /embed/job_board?for=stripe).
+  // The path segment is literally "embed", which resolves to a nonexistent
+  // board and 404s — the token is the only usable slug.
+  if (!slug || slug === 'embed') {
+    try {
+      slug = new URL(url).searchParams.get('for');
+    } catch {
+      // not a parseable URL — keep whatever the regex found
+    }
+  }
+  if (!slug || slug === 'embed') return null;
+  return `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`;
 }
 
 // NaN-safe Date.parse — `|| undefined` would also coerce a valid epoch 0.

@@ -343,6 +343,11 @@ const CAREERS_RE = /^https:\/\/([\w-]+)\.(wd[\w-]*)\.myworkdayjobs\.com\/(?:[a-z
 // reports zero jobs and then reads as unreachable (#3498). Matched first so a
 // hand-verified CXS `api:` is honored as written instead of corrupting the entry.
 const CXS_RE = /^https:\/\/([\w-]+)\.(wd[\w-]*)\.myworkdayjobs\.com\/wday\/cxs\/([\w-]+)\/([^/?#]+)(?:\/jobs)?(?:[/?#]|$)/;
+// A myworkdaysite tenant: `https://{instance}.myworkdaysite.com/recruiting/{tenant}/{site}`.
+// Same Workday product, but the tenant lives in the PATH, not the hostname —
+// so neither CAREERS_RE nor CXS_RE matches it and every such board silently
+// threw "cannot derive CXS endpoint".
+const SITE_RE = /^https:\/\/([\w-]+)\.myworkdaysite\.com\/recruiting\/([\w-]+)\/([^/?#]+)/;
 
 function makeEndpoint(origin, tenant, site) {
   return {
@@ -354,6 +359,19 @@ function makeEndpoint(origin, tenant, site) {
     // returns the posting's DETAIL document (GET, no body). That is the only
     // place a multi-location posting's real places exist — see
     // MULTI_LOCATION_PLACEHOLDER_RE.
+    cxsBase: `${origin}/wday/cxs/${tenant}/${site}`,
+    origin,
+  };
+}
+
+// myworkdaysite's public posting path is /recruiting/{tenant}/{site}{externalPath},
+// unlike myworkdayjobs' /{site}{externalPath} — so jobBase differs even though
+// the CXS shape is identical.
+function makeSiteEndpoint(host, tenant, site) {
+  const origin = `https://${host}`;
+  return {
+    api: `${origin}/wday/cxs/${tenant}/${site}/jobs`,
+    jobBase: `${origin}/recruiting/${tenant}/${site}`,
     cxsBase: `${origin}/wday/cxs/${tenant}/${site}`,
     origin,
   };
@@ -375,6 +393,11 @@ function resolveEndpoint(entry) {
     if (cxs) {
       const [, host, instance, tenant, site] = cxs;
       return makeEndpoint(`https://${host}.${instance}.myworkdayjobs.com`, tenant, site);
+    }
+    const siteMatch = url.match(SITE_RE);
+    if (siteMatch) {
+      const [, instance, tenant, siteName] = siteMatch;
+      return makeSiteEndpoint(`${instance}.myworkdaysite.com`, tenant, siteName);
     }
     const m = url.match(CAREERS_RE);
     if (!m) continue;
@@ -464,7 +487,7 @@ export function isWorkdayJobUrl(url) {
   } catch {
     return null;
   }
-  return parsed.hostname.toLowerCase().endsWith('.myworkdayjobs.com');
+  return /\.myworkday(jobs|site)\.com$/.test(parsed.hostname.toLowerCase());
 }
 
 export function workdayDedupKey(job) {
