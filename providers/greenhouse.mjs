@@ -45,9 +45,11 @@ function resolveApiUrl(entry) {
   // board and 404s — the token is the only usable slug.
   if (!slug || slug === 'embed') {
     try {
-      slug = new URL(url).searchParams.get('for');
+      // Only a Greenhouse URL names a board in ?for=: on any other site the param
+      // is unrelated (example.com/jobs?for=stripe) and must not select a board.
+      slug = new URL(assertGreenhouseUrl(url)).searchParams.get('for');
     } catch {
-      // not a parseable URL — keep whatever the regex found
+      // unparseable, non-HTTPS or non-Greenhouse URL: no board to read
     }
   }
   if (!slug || slug === 'embed') return null;

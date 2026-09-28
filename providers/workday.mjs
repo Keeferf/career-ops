@@ -504,7 +504,16 @@ export function workdayDedupKey(job) {
   if (underscoreIdx === -1) return null; // no title/requisition-ID separator — nothing to key on
   const reqId = stripWorkdayRepostSuffix(lastSegment.slice(underscoreIdx + 1));
   if (!reqId) return null;
-  return `workday:${parsed.hostname.toLowerCase()}:${reqId}`;
+  let scope = parsed.hostname.toLowerCase();
+  // One myworkdaysite.com host serves many tenants (/recruiting/{tenant}/{site}):
+  // scope by the path tenant but not {site}, so one tenant's cross-site reposts
+  // still collapse. Colon-free: scan.mjs reads the ID after the second colon.
+  if (scope.endsWith('.myworkdaysite.com')) {
+    const tenant = parsed.pathname.match(/^\/recruiting\/([\w-]+)\//)?.[1];
+    if (!tenant) return null;
+    scope += `/recruiting/${tenant.toLowerCase()}`;
+  }
+  return `workday:${scope}:${reqId}`;
 }
 
 // Workday's LIST endpoint answers a posting attached to more than one location
